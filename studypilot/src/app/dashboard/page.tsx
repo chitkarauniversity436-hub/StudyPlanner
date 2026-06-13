@@ -18,6 +18,30 @@ interface Task {
   status: boolean;
 }
 
+interface Stats {
+  upcomingExam: string | null;
+  studyStreak: number;
+  maxStreak: number;
+  totalActiveDays: number;
+  totalTasksYear: number;
+  submissions: { date: string; count: number }[];
+  xp: number;
+  level: number;
+}
+
+const XP_THRESHOLDS: Record<number, number> = {
+  1: 0,
+  2: 100,
+  3: 250,
+  4: 500,
+  5: 1000,
+  6: 2000,
+  7: 4000,
+  8: 8000,
+  9: 15000,
+  10: 30000
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
@@ -26,13 +50,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [addingTask, setAddingTask] = useState(false);
-  const [stats, setStats] = useState({ 
+  const [stats, setStats] = useState<Stats>({ 
     studyStreak: 0, 
     upcomingExam: null,
     maxStreak: 0,
     totalActiveDays: 0,
     totalTasksYear: 0,
-    submissions: [] as { date: string, count: number }[]
+    submissions: [],
+    xp: 0,
+    level: 1
   });
   
   const progressPercentage = tasks.length > 0 ? Math.round((tasks.filter(t => t.status).length / tasks.length) * 100) : 0;
@@ -56,12 +82,20 @@ export default function DashboardPage() {
       }));
       setTasks(formattedTasks);
 
-      const statsRes = await api.get('/study-plan/stats');
-      setStats(statsRes.data);
+      fetchStats();
     } catch (err) {
       console.error("Failed to fetch tasks/stats", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const statsRes = await api.get('/study-plan/stats');
+      setStats(statsRes.data);
+    } catch (err) {
+      console.error("Failed to fetch stats", err);
     }
   };
 
@@ -75,12 +109,18 @@ export default function DashboardPage() {
     // Optimistic UI update
     setTasks(tasks.map(t => t.id === id ? { ...t, status: !t.status } : t));
     try {
-      await api.put(`/study-plan/${id}/toggle`);
+      const res = await api.put(`/study-plan/${id}/toggle`);
       // Update heatmap stats dynamically when a task is checked
       fetchTasks();
+      fetchStats(); // Fetch stats to update XP!
+      
       const toggledTask = tasks.find(t => t.id === id);
       if (!toggledTask?.status) {
-        toast.success("Task completed! Keep it up! 🚀");
+        if (res.data.xpData?.leveledUp) {
+          toast.success(`🎉 LEVEL UP! You reached Level ${res.data.xpData.level}!`);
+        } else {
+          toast.success("Task completed! +20 XP 🚀");
+        }
       }
     } catch (err) {
       console.error("Failed to toggle task", err);
@@ -142,18 +182,16 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <main className="max-w-6xl mx-auto px-4 py-8 flex-1 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard</h1>
             <p className="text-slate-500 mt-1">Here is an overview of your study progress today.</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          
+          <div className="flex items-center gap-3">
             <Link href="/pomodoro">
-              <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm">
-                Pomodoro Timer
-              </Button>
+              <Button variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">Pomodoro Timer</Button>
             </Link>
             <Button 
               variant="secondary" 
@@ -163,25 +201,53 @@ export default function DashboardPage() {
               Auto Replan
             </Button>
             <Link href="/mock-tests">
-              <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm">
-                Mock Test
-              </Button>
+              <Button variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">Mock Test</Button>
             </Link>
             <Link href="/syllabuses">
-              <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm">
+              <Button variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
                 <BookOpen className="mr-2 h-4 w-4" /> My Syllabuses
               </Button>
             </Link>
             <Link href="/upload-syllabus">
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all">
                 Upload Syllabus
               </Button>
             </Link>
           </div>
         </div>
 
+        {/* Gamification Level Bar */}
+        <Card className="mb-8 border-indigo-100 shadow-sm bg-gradient-to-r from-indigo-50 to-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:rotate-12 transition-transform duration-700">
+            <Trophy className="w-24 h-24 text-indigo-600" />
+          </div>
+          <CardContent className="pt-6 relative z-10">
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                <p className="text-sm font-semibold text-indigo-500 uppercase tracking-wider mb-1">Your Rank</p>
+                <div className="flex items-baseline gap-2">
+                  <h2 className="text-3xl font-black text-slate-800">Level {stats.level}</h2>
+                  <span className="text-slate-500 text-sm font-medium">{stats.xp} XP total</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500 font-medium mb-1">Next Level: {XP_THRESHOLDS[stats.level + 1] || 'MAX'} XP</p>
+              </div>
+            </div>
+            
+            <div className="relative h-4 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+              <div 
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-1000 ease-out"
+                style={{ 
+                  width: `${stats.level >= 10 ? 100 : ((stats.xp - XP_THRESHOLDS[stats.level]) / (XP_THRESHOLDS[stats.level + 1] - XP_THRESHOLDS[stats.level])) * 100}%` 
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="border-none shadow-sm bg-white hover:shadow-md transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-slate-500">Today's Progress</CardTitle>

@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const nodemailer = require('nodemailer');
+const { awardXP } = require('../utils/gamification');
 
 const replanTasks = async (req, res) => {
   try {
@@ -131,7 +132,14 @@ const toggleTask = async (req, res) => {
     const newStatus = currentStatus ? false : true; 
     
     await db.query('UPDATE study_plan SET status = $1 WHERE id = $2', [newStatus, id]);
-    res.status(200).json({ message: 'Task toggled', status: newStatus });
+    
+    let xpData = null;
+    if (newStatus === true) {
+      // Award 20 XP for completing a task!
+      xpData = await awardXP(user_id, 20);
+    }
+    
+    res.status(200).json({ message: 'Task toggled', status: newStatus, xpData });
   } catch (error) {
     console.error('Error toggling task:', error);
     res.status(500).json({ error: 'Failed to toggle task' });
@@ -141,6 +149,10 @@ const toggleTask = async (req, res) => {
 const getStats = async (req, res) => {
   try {
     const user_id = req.user.id;
+    
+    // Get user XP and Level
+    const userResult = await db.query('SELECT xp, level FROM users WHERE id = $1', [user_id]);
+    const { xp, level } = userResult.rows[0];
     
     // Get max date for Upcoming Exam
     const maxDateResult = await db.query('SELECT MAX(date) as max_date FROM study_plan WHERE user_id = $1', [user_id]);
@@ -243,7 +255,9 @@ const getStats = async (req, res) => {
       maxStreak: maxStreak,
       totalActiveDays: completedDates.length,
       totalTasksYear: totalTasksYear,
-      submissions: submissions
+      submissions: submissions,
+      xp: xp || 0,
+      level: level || 1
     });
   } catch (error) {
     console.error('Error fetching stats:', error);

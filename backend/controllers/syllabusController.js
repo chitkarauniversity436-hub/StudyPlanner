@@ -40,7 +40,7 @@ const uploadSyllabus = async (req, res) => {
     // 3. Upload to Cloudinary via stream
     const fileUrl = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'studypilot_syllabuses', resource_type: 'raw', format: 'pdf' },
+        { folder: 'studypilot_syllabuses', resource_type: 'image', format: 'pdf' },
         (error, result) => {
           if (error) reject(error);
           else resolve(result.secure_url);
@@ -152,9 +152,10 @@ const deleteSyllabus = async (req, res) => {
       const folderIndex = urlParts.indexOf('studypilot_syllabuses');
       if (folderIndex !== -1) {
         // public_id for raw files includes the extension
-        const publicId = urlParts.slice(folderIndex).join('/');
+        const publicIdRaw = urlParts.slice(folderIndex).join('/');
+        const publicId = publicIdRaw.replace('.pdf', '');
         try {
-          await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
           console.log(`Deleted Cloudinary asset: ${publicId}`);
         } catch (err) {
           console.error(`Failed to delete Cloudinary asset: ${publicId}`, err);
