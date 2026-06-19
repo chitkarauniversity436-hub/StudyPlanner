@@ -9,16 +9,25 @@ async function testUpload() {
     const dummyPath = path.join(__dirname, 'dummy.pdf');
     fs.writeFileSync(dummyPath, '%PDF-1.4\n1 0 obj\n<<\n/Title (Dummy PDF)\n>>\nendobj\n%%EOF');
 
-    // 2. Login to get a token
-    const loginRes = await axios.post('http://localhost:5000/api/auth/login', {
-      email: 'test@example.com',
-      password: 'password123'
-    });
-    
-    const token = loginRes.data.token;
+    // 2. Login or Register to get a token
+    let token;
+    try {
+      const loginRes = await axios.post('http://localhost:5000/api/auth/login', {
+        email: 'test_agent@example.com',
+        password: 'password123'
+      });
+      token = loginRes.data.token;
+    } catch (err) {
+      const regRes = await axios.post('http://localhost:5000/api/auth/register', {
+        name: 'Test Agent',
+        email: 'test_agent@example.com',
+        password: 'password123'
+      });
+      token = regRes.data.token;
+    }
     
     if (!token) {
-      console.log('Login failed');
+      console.log('Login/Register failed');
       return;
     }
 

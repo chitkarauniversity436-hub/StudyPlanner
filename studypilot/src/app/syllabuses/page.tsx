@@ -138,7 +138,7 @@ export default function SyllabusesPage() {
                         <div className="absolute inset-0">
                           {syl.file_path ? (
                             <iframe 
-                              src={`http://localhost:5000${syl.file_path}`} 
+                              src={syl.file_path.startsWith('http') ? syl.file_path : `http://localhost:5000${syl.file_path}`} 
                               className="w-full h-full border-none"
                               title={`${syl.subject_name} PDF`}
                             />
@@ -163,7 +163,7 @@ export default function SyllabusesPage() {
                         <div className="flex gap-2 items-center">
                           <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">Ready</span>
                           {syl.file_path && (
-                            <a href={`http://localhost:5000${syl.file_path}`} target="_blank" rel="noopener noreferrer">
+                            <a href={syl.file_path.startsWith('http') ? syl.file_path : `http://localhost:5000${syl.file_path}`} target="_blank" rel="noopener noreferrer">
                               <Button size="sm" variant="ghost" className="h-6 text-xs px-2 text-slate-500 hover:text-indigo-600">Open</Button>
                             </a>
                           )}
