@@ -8,7 +8,7 @@ const replanTasks = async (req, res) => {
 
     // Get all incomplete tasks from the past
     const missedTasksResult = await db.query(
-      'SELECT * FROM study_plan WHERE user_id = $1 AND status = false AND date < CURRENT_DATE ORDER BY date ASC',
+      'SELECT * FROM study_plan WHERE user_id = $1 AND status = false AND deleted = false AND date < CURRENT_DATE ORDER BY date ASC',
       [user_id]
     );
 
@@ -58,7 +58,7 @@ const sendReminderEmail = async (req, res) => {
     const user = userResult.rows[0];
 
     const tasksResult = await db.query(
-      'SELECT task FROM study_plan WHERE user_id = $1 AND date = CURRENT_DATE AND status = false',
+      'SELECT task FROM study_plan WHERE user_id = $1 AND date = CURRENT_DATE AND status = false AND deleted = false',
       [user_id]
     );
     
@@ -106,7 +106,7 @@ const getTasks = async (req, res) => {
   try {
     const user_id = req.user.id;
     const tasksResult = await db.query(
-      'SELECT id, task, status, date FROM study_plan WHERE user_id = $1 AND date <= CURRENT_DATE ORDER BY date DESC',
+      'SELECT id, task, status, date FROM study_plan WHERE user_id = $1 AND deleted = false AND date <= CURRENT_DATE ORDER BY date DESC',
       [user_id]
     );
     res.status(200).json({ tasks: tasksResult.rows });
@@ -306,8 +306,8 @@ const deleteTask = async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    await db.query('DELETE FROM study_plan WHERE id = $1', [id]);
-    res.status(200).json({ message: 'Task deleted successfully' });
+    await db.query('UPDATE study_plan SET deleted = true WHERE id = $1', [id]);
+    res.status(200).json({ message: 'Task removed successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
     res.status(500).json({ error: 'Failed to delete task' });
