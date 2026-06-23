@@ -27,6 +27,8 @@ interface Stats {
   submissions: { date: string; count: number }[];
   xp: number;
   level: number;
+  todayTotalTasks: number;
+  todayCompletedTasks: number;
 }
 
 const XP_THRESHOLDS: Record<number, number> = {
@@ -58,10 +60,12 @@ export default function DashboardPage() {
     totalTasksYear: 0,
     submissions: [],
     xp: 0,
-    level: 1
+    level: 1,
+    todayTotalTasks: 0,
+    todayCompletedTasks: 0
   });
   
-  const progressPercentage = tasks.length > 0 ? Math.round((tasks.filter(t => t.status).length / tasks.length) * 100) : 0;
+  const progressPercentage = stats.todayTotalTasks > 0 ? Math.round((stats.todayCompletedTasks / stats.todayTotalTasks) * 100) : 0;
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -139,6 +143,7 @@ export default function DashboardPage() {
       const res = await api.post('/study-plan/custom', { task: newTask });
       setTasks([res.data.task, ...tasks]);
       setNewTask("");
+      fetchStats();
       toast.success("Task added successfully!");
     } catch (err) {
       console.error("Failed to add task", err);
@@ -289,7 +294,7 @@ export default function DashboardPage() {
               <BookOpen className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{tasks.filter(t => t.status).length} / {tasks.length}</div>
+              <div className="text-2xl font-bold text-slate-900">{stats.todayCompletedTasks} / {stats.todayTotalTasks}</div>
               <p className="text-xs text-slate-400 mt-1">Daily goal</p>
             </CardContent>
           </Card>

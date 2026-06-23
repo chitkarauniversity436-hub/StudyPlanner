@@ -249,6 +249,14 @@ const getStats = async (req, res) => {
       buildDate.setDate(buildDate.getDate() + 1);
     }
 
+    // Get today's actual progress including soft-deleted tasks
+    const todayProgressResult = await db.query(
+      "SELECT COUNT(*) as total, SUM(CASE WHEN status = true THEN 1 ELSE 0 END) as completed FROM study_plan WHERE user_id = $1 AND date = CURRENT_DATE",
+      [user_id]
+    );
+    const todayTotalTasks = parseInt(todayProgressResult.rows[0].total || 0, 10);
+    const todayCompletedTasks = parseInt(todayProgressResult.rows[0].completed || 0, 10);
+
     res.status(200).json({
       upcomingExam: maxDate ? new Date(maxDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
       studyStreak: currentStreak,
@@ -257,7 +265,9 @@ const getStats = async (req, res) => {
       totalTasksYear: totalTasksYear,
       submissions: submissions,
       xp: xp || 0,
-      level: level || 1
+      level: level || 1,
+      todayTotalTasks,
+      todayCompletedTasks
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
