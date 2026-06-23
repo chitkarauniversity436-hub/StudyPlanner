@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogOut, BookOpen, Flame, Calendar, Trophy, PlusCircle, CheckCircle2, BrainCircuit, Rocket } from "lucide-react";
+import { LogOut, BookOpen, Flame, Calendar, Trophy, PlusCircle, CheckCircle2, BrainCircuit, Rocket, Trash2 } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
@@ -145,6 +145,19 @@ export default function DashboardPage() {
       toast.error("Failed to add task");
     } finally {
       setAddingTask(false);
+    }
+  };
+
+  const handleDeleteTask = async (id: number) => {
+    if (!confirm("Are you sure you want to remove this task?")) return;
+    try {
+      await api.delete(`/study-plan/${id}`);
+      setTasks(tasks.filter(t => t.id !== id));
+      fetchStats();
+      toast.success("Task removed!");
+    } catch (err) {
+      console.error("Failed to delete task", err);
+      toast.error("Failed to remove task");
     }
   };
 
@@ -393,6 +406,14 @@ export default function DashboardPage() {
                       >
                         {task.task}
                       </label>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" 
+                        onClick={() => handleDeleteTask(task.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))
                 )}

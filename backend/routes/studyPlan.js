@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { replanTasks, sendReminderEmail, getTasks, toggleTask, getStats, addCustomTask } = require('../controllers/studyPlanController');
+const { replanTasks, sendReminderEmail, getTasks, toggleTask, getStats, addCustomTask, deleteTask } = require('../controllers/studyPlanController');
 
 // @route   POST /api/study-plan/replan
 // @desc    Auto replan missed tasks to future dates
@@ -26,5 +26,9 @@ router.get('/stats', auth, getStats);
 // @route   PUT /api/study-plan/:id/toggle
 // @desc    Toggle task status
 router.put('/:id/toggle', auth, toggleTask);
+
+// @route   DELETE /api/study-plan/:id
+// @desc    Delete a task
+router.delete('/:id', auth, deleteTask);
 
 module.exports = router;

@@ -296,11 +296,30 @@ const addCustomTask = async (req, res) => {
   }
 };
 
+const deleteTask = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const { id } = req.params;
+    
+    const taskResult = await db.query('SELECT id FROM study_plan WHERE id = $1 AND user_id = $2', [id, user_id]);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    await db.query('DELETE FROM study_plan WHERE id = $1', [id]);
+    res.status(200).json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+};
+
 module.exports = {
   replanTasks,
   sendReminderEmail,
   getTasks,
   toggleTask,
   getStats,
-  addCustomTask
+  addCustomTask,
+  deleteTask
 };
